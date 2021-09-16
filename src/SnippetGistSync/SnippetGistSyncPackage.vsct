@@ -56,7 +56,7 @@
         <Parent guid="guidSnippetGistSyncPackageCmdSet" id="MyMenuGroup" />
         <Icon guid="guidImages" id="bmpPic1" />
         <Strings>
-          <ButtonText>Invoke SnippetGistSyncCommand</ButtonText>
+          <ButtonText>SnippetGistSync 選項</ButtonText>
         </Strings>
       </Button>
     </Buttons>
