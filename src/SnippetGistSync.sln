@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31702.278
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SnippetGistSync", "SnippetGistSync\SnippetGistSync.csproj", "{541B6A45-28A7-4790-A65E-0174107DA048}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{541B6A45-28A7-4790-A65E-0174107DA048}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{541B6A45-28A7-4790-A65E-0174107DA048}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{541B6A45-28A7-4790-A65E-0174107DA048}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{541B6A45-28A7-4790-A65E-0174107DA048}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A96F087E-FD57-4B7F-AD9B-BFA0BB3AB07F}
+	EndGlobalSection
+EndGlobal
