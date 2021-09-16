@@ -128,7 +128,7 @@ namespace SnippetGistSync {
                     return;
                 }
 
-                //上傳本地端                
+                //上傳本機端                
                 //if (snippetFileLastWriteTime > snippetGistLastUploadTime) {                    
                 //    //更新SnippetSyncerGist                    
                 //    //尋找符合的Gist File
@@ -143,7 +143,7 @@ namespace SnippetGistSync {
                 //}
                 ////下載遠端
                 //if (snippetFileLastWriteTime < snippetGistLastUploadTime) {
-                //    //更新本地端所有Snippet
+                //    //更新機地端所有Snippet
                 //    //刪除不符合的Snippet File
                 //
                 //    return;
