@@ -1,0 +1,332 @@
+﻿using Microsoft.VisualStudio.Settings;
+using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell.Interop;
+using Microsoft.VisualStudio.Shell.Settings;
+using Microsoft.VisualStudio.TextManager.Interop;
+using Newtonsoft.Json;
+using Octokit;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Threading;
+using System.Xml.Linq;
+using Task = System.Threading.Tasks.Task;
+
+namespace SnippetGistSync {
+    static class SnippetGistSyncService {
+        private static AsyncPackage serviceProvider;
+        private static EnvDTE.DTE dte;
+        private static IVsActivityLog log;
+        private static IVsTextManager2 textManager;
+        private static ShellSettingsManager settingsManager;
+        private static WritableSettingsStore userSettingsStore;
+        public static readonly string ExtensionName = "SnippetGistSync";
+        private static GitHubClient gitHub;
+        public static GitHubClient GitHub {
+            get {
+                if (gitHub == null) {
+                    gitHub = new GitHubClient(new ProductHeaderValue(ExtensionName)) {
+                        Credentials = new Credentials(UserPAT)
+                    };
+                }
+
+                return gitHub;
+            }
+        }
+        public static string UserName {
+            get {
+                if (!userSettingsStore.CollectionExists(ExtensionName)) {
+                    userSettingsStore.CreateCollection(ExtensionName);
+                }
+
+                return userSettingsStore.GetString(ExtensionName, "UserName", "");
+            }
+            set {
+                if (!userSettingsStore.CollectionExists(ExtensionName)) {
+                    userSettingsStore.CreateCollection(ExtensionName);
+                }
+
+                userSettingsStore.SetString(ExtensionName, "UserName", value);
+            }
+        }
+        public static string UserPAT {
+            get {
+                if (!userSettingsStore.CollectionExists(ExtensionName)) {
+                    userSettingsStore.CreateCollection(ExtensionName);
+                }
+
+                return userSettingsStore.GetString(ExtensionName, "UserPAT", "");
+            }
+            set {
+                if (!userSettingsStore.CollectionExists(ExtensionName)) {
+                    userSettingsStore.CreateCollection(ExtensionName);
+                }
+
+                userSettingsStore.SetString(ExtensionName, "UserPAT", value);
+            }
+        }
+        public static bool IsAutoSyncActionEnabled {
+            get {
+                if (!userSettingsStore.CollectionExists(ExtensionName)) {
+                    userSettingsStore.CreateCollection(ExtensionName);
+                }
+
+                return userSettingsStore.GetBoolean(ExtensionName, "IsAutoSyncActionEnabled", false);
+            }
+            set {
+                if (!userSettingsStore.CollectionExists(ExtensionName)) {
+                    userSettingsStore.CreateCollection(ExtensionName);
+                }
+
+                userSettingsStore.SetBoolean(ExtensionName, "IsAutoSyncActionEnabled", value);
+            }
+        }
+
+        internal static async Task InitializeAsync(AsyncPackage package, CancellationToken cancellationToken) {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(package.DisposalToken);
+
+            serviceProvider = package;
+            settingsManager = new ShellSettingsManager(serviceProvider);
+            userSettingsStore = settingsManager.GetWritableSettingsStore(SettingsScope.UserSettings);
+            dte = await package.GetServiceAsync(typeof(EnvDTE.DTE)) as EnvDTE.DTE;
+            log = await package.GetServiceAsync(typeof(SVsActivityLog)) as IVsActivityLog;
+            textManager = await package.GetServiceAsync(typeof(SVsTextManager)) as IVsTextManager2;
+
+            StartAutoSync();
+        }
+
+        internal static void StartAutoSync() {
+            if (!IsAutoSyncActionEnabled) {
+                return;
+            }
+
+            ThreadHelper.ThrowIfNotOnUIThread();
+
+            try {
+                log.LogEntry((UInt32)__ACTIVITYLOG_ENTRYTYPE.ALE_INFORMATION, ExtensionName, "同");
+
+                var snippetFileInfoList = SnippetGistSyncService.GetSnippetFileInfoList();
+                var snippetFileLastWriteTime = SnippetGistSyncService.GetSnippetFileLastWriteTime(snippetFileInfoList);
+                var snippetSyncerGist = SnippetGistSyncService.GetSnippetSyncerGist();
+                var snippetGistLastUploadTime = SnippetGistSyncService.GetSnippetGistLastUploadTime(snippetSyncerGist);
+
+                //新增SnippetSyncerGist
+                if (snippetSyncerGist == null) {
+                    var newGist = new NewGist() { Public = false, Description = $"Visual Studio extension [{SnippetGistSyncService.ExtensionName}] synced snippet files." };
+
+                    snippetFileInfoList.ForEach((snippetFileInfo) => {
+                        var gistFileName = snippetFileInfo.CodeLanguage + "|" + snippetFileInfo.FileName + "|" + snippetFileInfo.LastWriteTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
+
+                        newGist.Files.Add(gistFileName, snippetFileInfo.FileCotent);
+                    });
+
+                    newGist.Files.Add(SnippetGistSyncService.ExtensionName, $@"{{""lastUploadTime"":""{{{snippetFileLastWriteTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ")}}}""}}");
+                    SnippetGistSyncService.GitHub.Gist.Create(newGist).GetAwaiter().GetResult();
+
+                    return;
+                }
+
+                //上傳本地端                
+                //if (snippetFileLastWriteTime > snippetGistLastUploadTime) {                    
+                //    //更新SnippetSyncerGist                    
+                //    //尋找符合的Gist File
+                //    if () {
+                //        //更新內容
+                //    }
+                //    else {
+                //        //刪除不符合的Gist File
+                //    }
+                //
+                //    return;
+                //}
+                ////下載遠端
+                //if (snippetFileLastWriteTime < snippetGistLastUploadTime) {
+                //    //更新本地端所有Snippet
+                //    //刪除不符合的Snippet File
+                //
+                //    return;
+                //}
+
+                //var gg = github.Gist.Get(SnippetGistSyncGist.Id).GetAwaiter().GetResult();
+                //var time = gg.Files.Where(f => f.Key == "SnippetGistSync").Select(f => f.Value).Single();
+                //var c = time.Content;
+                //var account = JsonConvert.DeserializeAnonymousType(c, new { lastUpload = "" });
+                //var a = DateTime.Parse(account.lastUpload);
+                //
+                //
+                //var updateGist = new GistUpdate() { };
+                //
+                //updateGist.Files.Add("csharp|tryi.snippet", new GistFileUpdate() { NewFileName = "csharp|tryi.snippet", Content = @"
+                //<?xml version=""1.0"" encoding=""utf-8""?>
+                //<CodeSnippets xmlns=""http://schemas.microsoft.com/VisualStudio/2005/CodeSnippet"">
+                //  <CodeSnippet Format=""1.0.0"">
+                //    <Header>
+                //      <SnippetTypes>
+                //        <SnippetType>Expansion</SnippetType>
+                //      </SnippetTypes>
+                //      <Title>appset</Title>
+                //      <Author>tzengshinfu</Author>
+                //      <Description>取得目前應用程式預設組態的 AppSettingsSection 資料</Description>
+                //      <HelpUrl>
+                //      </HelpUrl>
+                //      <Shortcut>appset</Shortcut>
+                //    </Header>
+                //    <Snippet>
+                //      <Declarations>
+                //        <Literal Editable=""true"">
+                //          <ID>key</ID>
+                //          <ToolTip>索引鍵名稱</ToolTip>
+                //          <Default>key</Default>
+                //          <Function>
+                //          </Function>
+                //        </Literal>
+                //      </Declarations>
+                //      <Code Language=""csharp"" Delimiter=""$""><![CDATA[ConfigurationManager.AppSettings[""$key$""]]]></Code>
+                //    </Snippet>
+                //  </CodeSnippet>
+                //</CodeSnippets>
+                //" });
+                //github.Gist.Edit(SnippetGistSyncGist.Id, updateGist);
+
+                log.LogEntry((UInt32)__ACTIVITYLOG_ENTRYTYPE.ALE_INFORMATION, ExtensionName, "Execute");
+            }
+            catch (Exception ex) {
+                log.LogEntry((UInt32)__ACTIVITYLOG_ENTRYTYPE.ALE_ERROR, ExtensionName, ex.ToString());
+            }
+            finally {
+                log.LogEntry((UInt32)__ACTIVITYLOG_ENTRYTYPE.ALE_INFORMATION, ExtensionName, "Execute");
+            }
+        }
+
+        internal static void StopAutoSync() { 
+        }
+
+        public static List<SnippetFileInfo> GetSnippetFileInfoList() {
+            var snippetFileInfoList = new List<SnippetFileInfo>();
+            var expansionsList = new List<VsExpansion>();
+            var expansionManager = new Func<IVsExpansionManager>(() => {
+                IVsExpansionManager m_exManager = null;
+
+                textManager.GetExpansionManager(out m_exManager);
+
+                return m_exManager;
+            })();
+
+            SnippetInfoMap.List.ForEach((snippetInfo) => {
+                var expansionEnumerator = new Func<IVsExpansionEnumeration>(() => {
+                    IVsExpansionEnumeration funcResult = null;
+
+                    try {
+                        expansionManager.EnumerateExpansions(snippetInfo.Guid,
+                        0,     // return all info
+                        null,    // return all types
+                        0,     // return all types
+                        1,     // include snippets without types
+                        0,     // do not include duplicates
+                        out funcResult);
+                    }
+                    catch {
+                    }
+
+                    return funcResult;
+                })();
+
+                if (expansionEnumerator != null) {
+                    // Cache our expansions in a VsExpansion array
+                    var expansionInfo = new VsExpansion();
+                    var pExpansionInfo = new IntPtr[1];
+
+                    // Allocate enough memory for one VSExpansion structure. This memory is filled in by the Next method.
+                    pExpansionInfo[0] = Marshal.AllocCoTaskMem(Marshal.SizeOf(expansionInfo));
+
+                    var count = new Func<uint>(() => {
+                        uint funcResult = 0;
+
+                        expansionEnumerator.GetCount(out funcResult);
+
+                        return funcResult;
+                    })();
+
+                    for (uint i = 0; i < count; i++) {
+                        var fetched = new Func<uint>(() => {
+                            uint funcResult = 0;
+
+                            expansionEnumerator.Next(1, pExpansionInfo, out funcResult);
+
+                            return funcResult;
+                        })();
+
+                        if (fetched > 0) {
+                            // Convert the returned blob of data into a structure that can be read in managed code.
+                            expansionInfo = (VsExpansion)Marshal.PtrToStructure(pExpansionInfo[0], typeof(VsExpansion));
+
+                            var snippetXml = XDocument.Load(expansionInfo.path);
+                            var nameSpace = snippetXml.Root.Name.Namespace.NamespaceName;
+                            var author = snippetXml.Descendants($"{{{nameSpace}}}Author").FirstOrDefault()?.Value ?? "";                            
+
+                            if (author.Contains("Microsoft") || expansionInfo.path.Contains("AddaNewRowToTypedDataTable.snippet")) {
+                                continue;
+                            }
+
+                            var language = snippetXml.Descendants($"{{{nameSpace}}}Code").FirstOrDefault()?.Attribute("Language")?.Value.ToLower() ?? "";
+
+                            var snippetFileInfo = new SnippetFileInfo() {
+                                FileName = Path.GetFileName(expansionInfo.path),
+                                LastWriteTime = File.GetLastWriteTimeUtc(expansionInfo.path),
+                                FilePath = expansionInfo.path,
+                                FileCotent = File.ReadAllText(expansionInfo.path),
+                                CodeLanguage = language
+                            };
+
+                            snippetFileInfoList.Add(snippetFileInfo);
+                        }
+                    }
+
+                    Marshal.FreeCoTaskMem(pExpansionInfo[0]);
+                }
+            });
+
+            return snippetFileInfoList;
+        }
+
+        public static DateTime GetSnippetFileLastWriteTime(List<SnippetFileInfo> snippetFileInfoList) {
+            return snippetFileInfoList.Select(snippetFileInfo => snippetFileInfo.LastWriteTime).DefaultIfEmpty(DateTime.MinValue).Max();
+        }
+
+        public static Gist GetSnippetSyncerGist() {
+            var snippetSyncerGist = GitHub.Gist.GetAllForUser(UserName).GetAwaiter().GetResult().Where(gist=>gist.Public == false && gist.Files.TryGetValue(ExtensionName, out _)).SingleOrDefault();
+
+            if (snippetSyncerGist != null) {                            
+                //Gist.GetAllForUser回傳結果的Content屬性為null，必須用Gist.Get再取得一次才會有值。
+                return GitHub.Gist.Get(snippetSyncerGist.Id).GetAwaiter().GetResult();
+            }
+            else {
+                return snippetSyncerGist;
+            }
+        }
+
+        public static DateTime GetSnippetGistLastUploadTime(Gist snippetSyncerGist) {
+            if (snippetSyncerGist == null) {
+                return DateTime.MinValue;
+            }
+            else {
+                var gistContent = snippetSyncerGist.Files.Where(file => file.Key == ExtensionName).Select(file => file.Value).Single().Content;
+                var gistJSON = JsonConvert.DeserializeAnonymousType(gistContent, new { lastUploadTime = "" });
+                var lastUploadTime = DateTime.Parse(gistJSON.lastUploadTime);
+            
+                return lastUploadTime;
+            }
+        }
+    }
+
+    class SnippetFileInfo {
+        public string FileName { get; set; }
+        public DateTime LastWriteTime { get; set; }
+        public string FilePath { get; set; }
+        public string FileCotent { get; set; }
+
+        public string CodeLanguage { get; set; }
+    }
+}

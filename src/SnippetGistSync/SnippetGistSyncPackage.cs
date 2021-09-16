@@ -1,4 +1,5 @@
-﻿using Microsoft.VisualStudio.Shell;
+﻿using Microsoft.VisualStudio;
+using Microsoft.VisualStudio.Shell;
 using System;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -23,6 +24,8 @@ namespace SnippetGistSync {
     /// </para>
     /// </remarks>
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
+    [ProvideAutoLoad(VSConstants.UICONTEXT.NoSolution_string, PackageAutoLoadFlags.BackgroundLoad)]
+    [ProvideAutoLoad(VSConstants.UICONTEXT.SolutionExistsAndFullyLoaded_string, PackageAutoLoadFlags.BackgroundLoad)]
     [Guid(SnippetGistSyncPackage.PackageGuidString)]
     [ProvideMenuResource("Menus.ctmenu", 1)]
     public sealed class SnippetGistSyncPackage : AsyncPackage {
@@ -44,7 +47,8 @@ namespace SnippetGistSync {
             // When initialized asynchronously, the current thread may be a background thread at this point.
             // Do any initialization that requires the UI thread after switching to the UI thread.
             await this.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
-    await SnippetGistSyncCommand.InitializeAsync(this);
+            await SnippetGistSyncCommand.InitializeAsync(this);
+            await SnippetGistSyncService.InitializeAsync(this, cancellationToken);
         }
 
         #endregion
