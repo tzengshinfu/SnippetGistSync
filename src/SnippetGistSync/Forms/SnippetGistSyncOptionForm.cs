@@ -79,7 +79,7 @@ namespace SnippetGistSync {
             get => IsAutoSyncActionEnabled? "已啟用同步" : "已停用同步";
         }
         public Color AutoSyncButtonTextColor { 
-            get => IsAutoSyncActionEnabled? Color.Green : Color.Gray;
+            get => IsAutoSyncActionEnabled? Color.DarkGreen : Color.DarkRed;
         }
     }
 }
