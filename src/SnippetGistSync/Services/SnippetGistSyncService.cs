@@ -10,7 +10,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using Task = System.Threading.Tasks.Task;
@@ -25,8 +24,8 @@ namespace SnippetGistSync {
         private static WritableSettingsStore userSettingsStore;
         public static readonly string ExtensionName = "SnippetGistSync";
         private static GitHubClient gitHub;
-        private static readonly int suspendSecond = 10;
-        private static readonly int maxErrorCount = 10;
+        private static readonly int suspendSeconds = 10;
+        private static readonly int maxErrorCounts = 10;
         public static GitHubClient GitHub {
             get {
                 if (gitHub == null) {
@@ -103,63 +102,78 @@ namespace SnippetGistSync {
         internal static async Task StartAutoSyncAsync() {            
             while (true) {
                 if (!IsAutoSyncActionEnabled) {
-                    await Task.Delay(suspendSecond * 1000);
+                    await Task.Delay(suspendSeconds * 1000);
 
                     continue;
                 }
 
-                var cumulativeErrorCount = 0;
+                var cumulativeErrorCounts = 0;
 
                 try {
-                    var snippetFileInfoList = GetSnippetFileInfoList();
-                    var snippetFileLastWriteTime = GetSnippetFileLastWriteTime(snippetFileInfoList);
-                    var snippetSyncerGist = await GetSnippetSyncerGistAsync();
-                    var snippetGistLastUploadTime = GetSnippetGistLastUploadTime(snippetSyncerGist);
+                    var snippetLocalFiles = GetSnippetLocalFiles();
+                    var snippetLocalFilesLastWriteTimeUtc = GetSnippetLocalFilesLastWriteTimeUtc(snippetLocalFiles);
+                    var snippetGist = await GetSnippetGistAsync();
+                    var snippetGistLastUploadTimeUtc = GetSnippetGistLastUploadTimeUtc(snippetGist);
 
                     #region 新增SnippetSyncerGist
-                    if (snippetSyncerGist == null) {
+                    if (snippetGist == null) {
                         LogInfomation("同步開始");
 
-                        var newGist = new NewGist() { Public = false, Description = $"Visual Studio extension [{ExtensionName}] synced snippet files." };
+                        var newSnippetGist = new NewGist() { Public = false, Description = $"Visual Studio 延伸模組 [{ExtensionName}] 已同步程式碼片段檔案儲存於此。" };
 
-                        snippetFileInfoList.ForEach((snippetFileInfo) => {
-                            var gistFileName = snippetFileInfo.CodeLanguage + "|" + snippetFileInfo.FileName + "|" + snippetFileInfo.LastWriteTime.ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ");
+                        snippetLocalFiles.ForEach((snippetFile) => {
+                            var snippetGistFileName = snippetFile.CodeLanguage + "|" + snippetFile.FileName + "|" + snippetFile.LastWriteTimeUtc.ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ");
 
-                            LogInfomation($"新增檔案[{snippetFileInfo.FilePath}]");
+                            LogInfomation($"新增檔案[{snippetFile.FilePath}]");
 
-                            newGist.Files.Add(gistFileName, snippetFileInfo.FileCotent);
+                            newSnippetGist.Files.Add(snippetGistFileName, snippetFile.FileCotent);
                         });
 
-                        newGist.Files.Add(ExtensionName, $@"{{""lastUploadTime"":""{snippetFileLastWriteTime.ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ")}""}}");
-                        await GitHub.Gist.Create(newGist);
+                        newSnippetGist.Files.Add(ExtensionName, $@"{{""lastUploadTimeUtc"":""{snippetLocalFilesLastWriteTimeUtc.ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ")}""}}");
+                        await GitHub.Gist.Create(newSnippetGist);
 
                         LogInfomation("同步完成");
 
-                        await Task.Delay(suspendSecond * 1000);
+                        await Task.Delay(suspendSeconds * 1000);
 
                         continue;
                     }
                     #endregion
 
                     #region 不需同步
-                    if (snippetFileLastWriteTime == snippetGistLastUploadTime) {
+                    if (snippetLocalFilesLastWriteTimeUtc == snippetGistLastUploadTimeUtc) {
                         LogInfomation("同步開始");
                         LogInfomation("不需同步");
                         LogInfomation("同步完成");
 
-                        await Task.Delay(suspendSecond * 1000);
+                        await Task.Delay(suspendSeconds * 1000);
 
                         continue;
                     }
                     #endregion
 
                     #region 上傳本機端
-                    if (snippetFileLastWriteTime > snippetGistLastUploadTime) {
+                    if (snippetLocalFilesLastWriteTimeUtc > snippetGistLastUploadTimeUtc) {
                         LogInfomation("同步開始");
 
-                        snippetSyncerGist.Files.ToList().ForEach((gistFile) => { 
-                    
+                        var updateSnippetGist = new GistUpdate();
+
+                        snippetGist.Files.ToList().ForEach((snippetGistFile) => {
+                            var snippetGistFileCodeLanguage = snippetGistFile.Key.Split('|')[0];
+                            var snippetGistFileName = snippetGistFile.Key.Split('|')[1];                            
+                            var matchSnippetLocalFile = snippetLocalFiles.Where(snippetFile => snippetFile.CodeLanguage == snippetGistFileCodeLanguage && snippetFile.FileName == snippetGistFileName).SingleOrDefault();
+
+                            if (matchSnippetLocalFile != null) {
+                                var snippetGistFileLastWriteTimeUtc = DateTime.Parse(snippetGistFile.Key.Split('|')[2]).ToUniversalTime();
+                                var snippetLocalFileLastWriteTimeUtc = matchSnippetLocalFile.LastWriteTimeUtc;
+
+                                if (snippetLocalFileLastWriteTimeUtc > snippetGistFileLastWriteTimeUtc) { 
+                                    updateSnippetGist.Files.Add(snippetGistFile.Key, new GistFileUpdate() { });                                
+                                }
+                            }                            
                         });
+
+                        await GitHub.Gist.Edit(snippetGist.Id, updateSnippetGist);
                         //更新SnippetSyncerGist                    
                         //尋找符合的Gist File
                         if (true) {
@@ -171,14 +185,14 @@ namespace SnippetGistSync {
                 
                         LogInfomation("同步完成");
 
-                        await Task.Delay(suspendSecond * 1000);
+                        await Task.Delay(suspendSeconds * 1000);
 
                         continue;
                     }
                     #endregion
 
                     #region 下載遠端
-                    //if (snippetFileLastWriteTime < snippetGistLastUploadTime) {
+                    //if (snippetFileLastWriteTimeUtc < snippetGistLastUploadTimeUtc) {
                     //    LogInfomation("同步開始");
                     //    //更新機地端所有Snippet
                     //    //刪除不符合的Snippet File
@@ -237,25 +251,25 @@ namespace SnippetGistSync {
                     //continue;
                 }
                 catch (Exception ex) {
-                    cumulativeErrorCount++;
+                    cumulativeErrorCounts++;
 
                     LogError(ex.ToString());
 
-                    if (cumulativeErrorCount >= maxErrorCount) {
-                        LogError($"錯誤次數已達{maxErrorCount}次，同步中止");
+                    if (cumulativeErrorCounts >= maxErrorCounts) {
+                        LogError($"錯誤次數已達{maxErrorCounts}次，同步中止");
 
                         IsAutoSyncActionEnabled = false;
                     }
 
-                    await Task.Delay(suspendSecond * 1000);
+                    await Task.Delay(suspendSeconds * 1000);
 
                     continue;
                 }
             }
         }
 
-        public static List<SnippetFileInfo> GetSnippetFileInfoList() {
-            var snippetFileInfoList = new List<SnippetFileInfo>();
+        public static List<SnippetLocalFile> GetSnippetLocalFiles() {
+            var snippetFileInfoList = new List<SnippetLocalFile>();
             var expansionsList = new List<VsExpansion>();
             var expansionManager = new Func<IVsExpansionManager>(() => {
                 IVsExpansionManager m_exManager = null;
@@ -323,9 +337,9 @@ namespace SnippetGistSync {
 
                             var language = snippetXml.Descendants($"{{{nameSpace}}}Code").FirstOrDefault()?.Attribute("Language")?.Value.ToLower() ?? "";
 
-                            var snippetFileInfo = new SnippetFileInfo() {
+                            var snippetFileInfo = new SnippetLocalFile() {
                                 FileName = Path.GetFileName(expansionInfo.path),
-                                LastWriteTime = File.GetLastWriteTimeUtc(expansionInfo.path),
+                                LastWriteTimeUtc = File.GetLastWriteTimeUtc(expansionInfo.path),
                                 FilePath = expansionInfo.path,
                                 FileCotent = File.ReadAllText(expansionInfo.path),
                                 CodeLanguage = language
@@ -342,11 +356,11 @@ namespace SnippetGistSync {
             return snippetFileInfoList;
         }
 
-        public static DateTime GetSnippetFileLastWriteTime(List<SnippetFileInfo> snippetFileInfoList) {
-            return snippetFileInfoList.Select(snippetFileInfo => snippetFileInfo.LastWriteTime).DefaultIfEmpty(DateTime.MinValue).Max();
+        public static DateTime GetSnippetLocalFilesLastWriteTimeUtc(List<SnippetLocalFile> snippetFileInfoList) {
+            return snippetFileInfoList.Select(snippetFileInfo => snippetFileInfo.LastWriteTimeUtc).DefaultIfEmpty(DateTime.MinValue).Max();
         }
 
-        public static async Task<Gist> GetSnippetSyncerGistAsync() {
+        public static async Task<Gist> GetSnippetGistAsync() {
             var snippetSyncerGist = (await GitHub.Gist.GetAllForUser(UserName)).Where(gist=>gist.Public == false && gist.Files.TryGetValue(ExtensionName, out _)).SingleOrDefault();
 
             if (snippetSyncerGist != null) {                            
@@ -358,16 +372,16 @@ namespace SnippetGistSync {
             }
         }
 
-        public static DateTime GetSnippetGistLastUploadTime(Gist snippetSyncerGist) {
+        public static DateTime GetSnippetGistLastUploadTimeUtc(Gist snippetSyncerGist) {
             if (snippetSyncerGist == null) {
                 return DateTime.MinValue;
             }
             else {
                 var gistContent = snippetSyncerGist.Files.Where(file => file.Key == ExtensionName).Select(file => file.Value).Single().Content;
-                var gistJSON = JsonConvert.DeserializeAnonymousType(gistContent, new { lastUploadTime = "" });
-                var lastUploadTime = DateTime.Parse(gistJSON.lastUploadTime).ToUniversalTime();
+                var gistJSON = JsonConvert.DeserializeAnonymousType(gistContent, new { lastUploadTimeUtc = "" });
+                var lastUploadTimeUtc = DateTime.Parse(gistJSON.lastUploadTimeUtc).ToUniversalTime();
             
-                return lastUploadTime;
+                return lastUploadTimeUtc;
             }
         }
 
@@ -390,9 +404,9 @@ namespace SnippetGistSync {
         }
     }
 
-    class SnippetFileInfo {
+    class SnippetLocalFile {
         public string FileName { get; set; }
-        public DateTime LastWriteTime { get; set; }
+        public DateTime LastWriteTimeUtc { get; set; }
         public string FilePath { get; set; }
         public string FileCotent { get; set; }
 
