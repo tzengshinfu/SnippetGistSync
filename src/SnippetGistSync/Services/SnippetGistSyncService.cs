@@ -24,6 +24,7 @@ namespace SnippetGistSync {
         private static WritableSettingsStore userSettingsStore;
         public static readonly string ExtensionName = "SnippetGistSync";
         private static GitHubClient gitHub;
+        private static Task autoSyncTask;
         public static GitHubClient GitHub {
             get {
                 if (gitHub == null) {
@@ -84,7 +85,7 @@ namespace SnippetGistSync {
             }
         }
 
-        internal static async Task InitializeAsync(AsyncPackage package, CancellationToken cancellationToken) {
+        internal static async Task InitializeAsync(AsyncPackage package) {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(package.DisposalToken);
 
             serviceProvider = package;
@@ -98,127 +99,136 @@ namespace SnippetGistSync {
         }
 
         internal static void StartAutoSync() {
-            if (!IsAutoSyncActionEnabled) {
-                return;
-            }
+            autoSyncTask = Task.Run(new Action(()=> { 
+                 while (true) {
+                    if (!IsAutoSyncActionEnabled) {
+                        SpinWait.SpinUntil(() => false, 10 * 1000);
 
-            ThreadHelper.ThrowIfNotOnUIThread();
-
-            try {
-                var snippetFileInfoList = SnippetGistSyncService.GetSnippetFileInfoList();
-                var snippetFileLastWriteTime = SnippetGistSyncService.GetSnippetFileLastWriteTime(snippetFileInfoList);
-                var snippetSyncerGist = SnippetGistSyncService.GetSnippetSyncerGist();
-                var snippetGistLastUploadTime = SnippetGistSyncService.GetSnippetGistLastUploadTime(snippetSyncerGist);
-
-                #region 新增SnippetSyncerGist
-                if (snippetSyncerGist == null) {
-                    LogInfomation("同步開始");
-
-                    var newGist = new NewGist() { Public = false, Description = $"Visual Studio extension [{SnippetGistSyncService.ExtensionName}] synced snippet files." };
-
-                    snippetFileInfoList.ForEach((snippetFileInfo) => {
-                        var gistFileName = snippetFileInfo.CodeLanguage + "|" + snippetFileInfo.FileName + "|" + snippetFileInfo.LastWriteTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
-
-                        LogInfomation($"新增檔案[{snippetFileInfo.FilePath}]");
-
-                        newGist.Files.Add(gistFileName, snippetFileInfo.FileCotent);
-                    });
-
-                    newGist.Files.Add(SnippetGistSyncService.ExtensionName, $@"{{""lastUploadTime"":""{{{snippetFileLastWriteTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ")}}}""}}");
-                    SnippetGistSyncService.GitHub.Gist.Create(newGist).GetAwaiter().GetResult();
-
-                    LogInfomation("同步完成");
-
-                    return;
-                }
-                #endregion
-
-                #region 不需同步
-                if (snippetFileLastWriteTime == snippetGistLastUploadTime) {
-                    LogInfomation("同步開始");
-                    LogInfomation("不需同步");
-                    LogInfomation("同步完成");
-
-                    return;
-                }
-                #endregion
-
-                #region 上傳本機端
-                if (snippetFileLastWriteTime > snippetGistLastUploadTime) {
-                    LogInfomation("同步開始");
-                    //更新SnippetSyncerGist                    
-                    //尋找符合的Gist File
-                    if () {
-                        //更新內容
+                        continue;
                     }
-                    else {
-                        //刪除不符合的Gist File
-                    }
+
+                    try {
+                        var snippetFileInfoList = GetSnippetFileInfoList();
+                        var snippetFileLastWriteTime = GetSnippetFileLastWriteTime(snippetFileInfoList);
+                        var snippetSyncerGist = GetSnippetSyncerGist();
+                        var snippetGistLastUploadTime = GetSnippetGistLastUploadTime(snippetSyncerGist);
+
+                        #region 新增SnippetSyncerGist
+                        if (snippetSyncerGist == null) {
+                            LogInfomation("同步開始");
+
+                            var newGist = new NewGist() { Public = false, Description = $"Visual Studio extension [{ExtensionName}] synced snippet files." };
+
+                            snippetFileInfoList.ForEach((snippetFileInfo) => {
+                                var gistFileName = snippetFileInfo.CodeLanguage + "|" + snippetFileInfo.FileName + "|" + snippetFileInfo.LastWriteTime.ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ");
+
+                                LogInfomation($"新增檔案[{snippetFileInfo.FilePath}]");
+
+                                newGist.Files.Add(gistFileName, snippetFileInfo.FileCotent);
+                            });
+
+                            newGist.Files.Add(ExtensionName, $@"{{""lastUploadTime"":""{snippetFileLastWriteTime.ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ")}""}}");
+                            GitHub.Gist.Create(newGist).GetAwaiter().GetResult();
+
+                            LogInfomation("同步完成");
+
+                            return;
+                        }
+                        #endregion
+
+                        #region 不需同步
+                        if (snippetFileLastWriteTime == snippetGistLastUploadTime) {
+                            LogInfomation("同步開始");
+                            LogInfomation("不需同步");
+                            LogInfomation("同步完成");
+
+                            return;
+                        }
+                        #endregion
+
+                        return;
+
+                        #region 上傳本機端
+                        if (snippetFileLastWriteTime > snippetGistLastUploadTime) {
+                            LogInfomation("同步開始");
+
+                            snippetSyncerGist.Files.ToList().ForEach((gistFile) => { 
+                    
+                            });
+                            //更新SnippetSyncerGist                    
+                            //尋找符合的Gist File
+                            if (true) {
+                                //更新內容
+                            }
+                            else {
+                                //刪除不符合的Gist File
+                            }
                 
-                    LogInfomation("同步完成");
+                            LogInfomation("同步完成");
 
-                    return;
-                }
-                #endregion
+                            return;
+                        }
+                        #endregion
 
-                #region 下載遠端
-                //if (snippetFileLastWriteTime < snippetGistLastUploadTime) {
-                //    LogInfomation("同步開始");
-                //    //更新機地端所有Snippet
-                //    //刪除不符合的Snippet File
-                //
-                //    LogInfomation("同步完成");
-                //    return;
-                //}
-                #endregion
+                        #region 下載遠端
+                        //if (snippetFileLastWriteTime < snippetGistLastUploadTime) {
+                        //    LogInfomation("同步開始");
+                        //    //更新機地端所有Snippet
+                        //    //刪除不符合的Snippet File
+                        //
+                        //    LogInfomation("同步完成");
+                        //    return;
+                        //}
+                        #endregion
 
-                //var gg = github.Gist.Get(SnippetGistSyncGist.Id).GetAwaiter().GetResult();
-                //var time = gg.Files.Where(f => f.Key == "SnippetGistSync").Select(f => f.Value).Single();
-                //var c = time.Content;
-                //var account = JsonConvert.DeserializeAnonymousType(c, new { lastUpload = "" });
-                //var a = DateTime.Parse(account.lastUpload);
-                //
-                //
-                //var updateGist = new GistUpdate() { };
-                //
-                //updateGist.Files.Add("csharp|tryi.snippet", new GistFileUpdate() { NewFileName = "csharp|tryi.snippet", Content = @"
-                //<?xml version=""1.0"" encoding=""utf-8""?>
-                //<CodeSnippets xmlns=""http://schemas.microsoft.com/VisualStudio/2005/CodeSnippet"">
-                //  <CodeSnippet Format=""1.0.0"">
-                //    <Header>
-                //      <SnippetTypes>
-                //        <SnippetType>Expansion</SnippetType>
-                //      </SnippetTypes>
-                //      <Title>appset</Title>
-                //      <Author>tzengshinfu</Author>
-                //      <Description>取得目前應用程式預設組態的 AppSettingsSection 資料</Description>
-                //      <HelpUrl>
-                //      </HelpUrl>
-                //      <Shortcut>appset</Shortcut>
-                //    </Header>
-                //    <Snippet>
-                //      <Declarations>
-                //        <Literal Editable=""true"">
-                //          <ID>key</ID>
-                //          <ToolTip>索引鍵名稱</ToolTip>
-                //          <Default>key</Default>
-                //          <Function>
-                //          </Function>
-                //        </Literal>
-                //      </Declarations>
-                //      <Code Language=""csharp"" Delimiter=""$""><![CDATA[ConfigurationManager.AppSettings[""$key$""]]]></Code>
-                //    </Snippet>
-                //  </CodeSnippet>
-                //</CodeSnippets>
-                //" });
-                //github.Gist.Edit(SnippetGistSyncGist.Id, updateGist);                
-            }
-            catch (Exception ex) {
-                LogError(ex.ToString());
-            }
-        }
-
-        internal static void StopAutoSync() { 
+                        //var gg = github.Gist.Get(SnippetGistSyncGist.Id).GetAwaiter().GetResult();
+                        //var time = gg.Files.Where(f => f.Key == "SnippetGistSync").Select(f => f.Value).Single();
+                        //var c = time.Content;
+                        //var account = JsonConvert.DeserializeAnonymousType(c, new { lastUpload = "" });
+                        //var a = DateTime.Parse(account.lastUpload);
+                        //
+                        //
+                        //var updateGist = new GistUpdate() { };
+                        //
+                        //updateGist.Files.Add("csharp|tryi.snippet", new GistFileUpdate() { NewFileName = "csharp|tryi.snippet", Content = @"
+                        //<?xml version=""1.0"" encoding=""utf-8""?>
+                        //<CodeSnippets xmlns=""http://schemas.microsoft.com/VisualStudio/2005/CodeSnippet"">
+                        //  <CodeSnippet Format=""1.0.0"">
+                        //    <Header>
+                        //      <SnippetTypes>
+                        //        <SnippetType>Expansion</SnippetType>
+                        //      </SnippetTypes>
+                        //      <Title>appset</Title>
+                        //      <Author>tzengshinfu</Author>
+                        //      <Description>取得目前應用程式預設組態的 AppSettingsSection 資料</Description>
+                        //      <HelpUrl>
+                        //      </HelpUrl>
+                        //      <Shortcut>appset</Shortcut>
+                        //    </Header>
+                        //    <Snippet>
+                        //      <Declarations>
+                        //        <Literal Editable=""true"">
+                        //          <ID>key</ID>
+                        //          <ToolTip>索引鍵名稱</ToolTip>
+                        //          <Default>key</Default>
+                        //          <Function>
+                        //          </Function>
+                        //        </Literal>
+                        //      </Declarations>
+                        //      <Code Language=""csharp"" Delimiter=""$""><![CDATA[ConfigurationManager.AppSettings[""$key$""]]]></Code>
+                        //    </Snippet>
+                        //  </CodeSnippet>
+                        //</CodeSnippets>
+                        //" });
+                        //github.Gist.Edit(SnippetGistSyncGist.Id, updateGist);                
+                    }
+                    catch (Exception ex) {
+                        LogError(ex.ToString());
+                    }
+            
+                    SpinWait.SpinUntil(() => false, 10 * 1000);
+                }   
+            }));
         }
 
         public static List<SnippetFileInfo> GetSnippetFileInfoList() {
@@ -332,7 +342,7 @@ namespace SnippetGistSync {
             else {
                 var gistContent = snippetSyncerGist.Files.Where(file => file.Key == ExtensionName).Select(file => file.Value).Single().Content;
                 var gistJSON = JsonConvert.DeserializeAnonymousType(gistContent, new { lastUploadTime = "" });
-                var lastUploadTime = DateTime.Parse(gistJSON.lastUploadTime);
+                var lastUploadTime = DateTime.Parse(gistJSON.lastUploadTime).ToUniversalTime();
             
                 return lastUploadTime;
             }

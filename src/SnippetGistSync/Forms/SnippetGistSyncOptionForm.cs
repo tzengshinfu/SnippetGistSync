@@ -1,5 +1,6 @@
 ﻿using Octokit;
 using ReactiveUI;
+using System.Drawing;
 using System.Reactive;
 using System.Windows.Forms;
 
@@ -12,11 +13,12 @@ namespace SnippetGistSync {
             this.WhenActivated(a => {
                 a(this.Bind(ViewModel, vm => vm.UserName, v => v.txtUserName.Text));
                 a(this.Bind(ViewModel, vm => vm.UserPAT, v => v.txtUserPAT.Text));
-                a(this.Bind(ViewModel, vm => vm.IsAutoSyncButtonEnabled, v => v.btnAutoSync.Enabled));
-                a(this.Bind(ViewModel, vm => vm.AutoSyncButtonText, v => v.btnAutoSync.Text));
+                a(this.Bind(ViewModel, vm => vm.IsAutoSyncButtonEnabled, v => v.btnToggleAutoSync.Enabled));
+                a(this.Bind(ViewModel, vm => vm.AutoSyncButtonText, v => v.btnToggleAutoSync.Text));
+                a(this.Bind(ViewModel, vm => vm.AutoSyncButtonTextColor, v => v.btnToggleAutoSync.ForeColor));
                 a(this.BindCommand(ViewModel, vm => vm.Save, v => v.btnSave));
                 a(this.BindCommand(ViewModel, vm => vm.ToGitHub, v => v.btnToGitHub));
-                a(this.BindCommand(ViewModel, vm => vm.AutoSync, v => v.btnAutoSync));
+                a(this.BindCommand(ViewModel, vm => vm.ToggleAutoSync, v => v.btnToggleAutoSync));
                 a(this.BindCommand(ViewModel, vm => vm.DownloadAll, v => v.btnDownloadAll));
                 a(this.BindCommand(ViewModel, vm => vm.UploadAll, v => v.btnUploadAll));
             });
@@ -31,7 +33,7 @@ namespace SnippetGistSync {
         private bool isAutoSyncActionEnabled;
         public ReactiveCommand<Unit, Unit> Save;
         public ReactiveCommand<Unit, Unit> ToGitHub;
-        public ReactiveCommand<Unit, Unit> AutoSync;
+        public ReactiveCommand<Unit, Unit> ToggleAutoSync;
         public ReactiveCommand<Unit, Unit> DownloadAll;
         public ReactiveCommand<Unit, Unit> UploadAll;
 
@@ -47,7 +49,7 @@ namespace SnippetGistSync {
                 var snippetGistSyncToGitHubForm = new SnippetGistSyncToGitHubForm();
                 snippetGistSyncToGitHubForm.ShowDialog();
             });
-            AutoSync = ReactiveCommand.Create(() => {
+            ToggleAutoSync = ReactiveCommand.Create(() => {
                 IsAutoSyncActionEnabled = !IsAutoSyncActionEnabled;
             });
             DownloadAll = ReactiveCommand.Create(() => {
@@ -74,7 +76,10 @@ namespace SnippetGistSync {
             get => (!string.IsNullOrWhiteSpace(UserName) && !string.IsNullOrWhiteSpace(UserPAT));
         }
         public string AutoSyncButtonText {
-            get => IsAutoSyncActionEnabled? "停用同步" : "啟用同步";
+            get => IsAutoSyncActionEnabled? "已啟用同步" : "已停用同步";
+        }
+        public Color AutoSyncButtonTextColor { 
+            get => IsAutoSyncActionEnabled? Color.Green : Color.Gray;
         }
     }
 }

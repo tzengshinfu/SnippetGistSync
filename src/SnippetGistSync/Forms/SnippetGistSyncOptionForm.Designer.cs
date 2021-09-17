@@ -34,7 +34,7 @@ namespace SnippetGistSync {
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.btnUploadAll = new System.Windows.Forms.Button();
             this.btnDownloadAll = new System.Windows.Forms.Button();
-            this.btnAutoSync = new System.Windows.Forms.Button();
+            this.btnToggleAutoSync = new System.Windows.Forms.Button();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
             this.SuspendLayout();
@@ -109,7 +109,7 @@ namespace SnippetGistSync {
             // 
             this.groupBox2.Controls.Add(this.btnUploadAll);
             this.groupBox2.Controls.Add(this.btnDownloadAll);
-            this.groupBox2.Controls.Add(this.btnAutoSync);
+            this.groupBox2.Controls.Add(this.btnToggleAutoSync);
             this.groupBox2.Location = new System.Drawing.Point(12, 133);
             this.groupBox2.Name = "groupBox2";
             this.groupBox2.Size = new System.Drawing.Size(404, 58);
@@ -135,14 +135,14 @@ namespace SnippetGistSync {
             this.btnDownloadAll.Text = "覆蓋本機";
             this.btnDownloadAll.UseVisualStyleBackColor = true;
             // 
-            // btnAutoSync
+            // btnToggleAutoSync
             // 
-            this.btnAutoSync.Location = new System.Drawing.Point(279, 21);
-            this.btnAutoSync.Name = "btnAutoSync";
-            this.btnAutoSync.Size = new System.Drawing.Size(98, 23);
-            this.btnAutoSync.TabIndex = 5;
-            this.btnAutoSync.Text = "啟用同步";
-            this.btnAutoSync.UseVisualStyleBackColor = true;
+            this.btnToggleAutoSync.Location = new System.Drawing.Point(279, 21);
+            this.btnToggleAutoSync.Name = "btnToggleAutoSync";
+            this.btnToggleAutoSync.Size = new System.Drawing.Size(98, 23);
+            this.btnToggleAutoSync.TabIndex = 5;
+            this.btnToggleAutoSync.Text = "啟用/停用同步";
+            this.btnToggleAutoSync.UseVisualStyleBackColor = true;
             // 
             // SnippetGistSyncOptionForm
             // 
@@ -179,6 +179,6 @@ namespace SnippetGistSync {
         private System.Windows.Forms.GroupBox groupBox2;
         private System.Windows.Forms.Button btnUploadAll;
         private System.Windows.Forms.Button btnDownloadAll;
-        private System.Windows.Forms.Button btnAutoSync;
+        private System.Windows.Forms.Button btnToggleAutoSync;
     }
 }

@@ -48,7 +48,7 @@ namespace SnippetGistSync {
             // Do any initialization that requires the UI thread after switching to the UI thread.
             await this.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
             await SnippetGistSyncCommand.InitializeAsync(this);
-            await SnippetGistSyncService.InitializeAsync(this, cancellationToken);
+            await SnippetGistSyncService.InitializeAsync(this);
         }
 
         #endregion
