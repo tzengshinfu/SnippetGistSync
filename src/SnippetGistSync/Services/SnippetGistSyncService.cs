@@ -110,14 +110,16 @@ namespace SnippetGistSync {
                 var snippetSyncerGist = SnippetGistSyncService.GetSnippetSyncerGist();
                 var snippetGistLastUploadTime = SnippetGistSyncService.GetSnippetGistLastUploadTime(snippetSyncerGist);
 
-                //新增SnippetSyncerGist
+                #region 新增SnippetSyncerGist
                 if (snippetSyncerGist == null) {
-                    log.LogEntry((UInt32)__ACTIVITYLOG_ENTRYTYPE.ALE_INFORMATION, ExtensionName, "同步開始");
+                    LogInfomation("同步開始");
 
                     var newGist = new NewGist() { Public = false, Description = $"Visual Studio extension [{SnippetGistSyncService.ExtensionName}] synced snippet files." };
 
                     snippetFileInfoList.ForEach((snippetFileInfo) => {
                         var gistFileName = snippetFileInfo.CodeLanguage + "|" + snippetFileInfo.FileName + "|" + snippetFileInfo.LastWriteTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
+
+                        LogInfomation($"新增檔案[{snippetFileInfo.FilePath}]");
 
                         newGist.Files.Add(gistFileName, snippetFileInfo.FileCotent);
                     });
@@ -125,21 +127,25 @@ namespace SnippetGistSync {
                     newGist.Files.Add(SnippetGistSyncService.ExtensionName, $@"{{""lastUploadTime"":""{{{snippetFileLastWriteTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ")}}}""}}");
                     SnippetGistSyncService.GitHub.Gist.Create(newGist).GetAwaiter().GetResult();
 
-                    log.LogEntry((UInt32)__ACTIVITYLOG_ENTRYTYPE.ALE_INFORMATION, ExtensionName, "同步完成");
+                    LogInfomation("同步完成");
 
                     return;
                 }
+                #endregion
 
-                if (snippetFileLastWriteTime > snippetGistLastUploadTime) {
-                    log.LogEntry((UInt32)__ACTIVITYLOG_ENTRYTYPE.ALE_INFORMATION, ExtensionName, "同步開始");
-                    log.LogEntry((UInt32)__ACTIVITYLOG_ENTRYTYPE.ALE_INFORMATION, ExtensionName, "同步完成");
+                #region 不需同步
+                if (snippetFileLastWriteTime == snippetGistLastUploadTime) {
+                    LogInfomation("同步開始");
+                    LogInfomation("不需同步");
+                    LogInfomation("同步完成");
 
                     return;
                 }
+                #endregion
 
-                //上傳本機端                
+                #region 上傳本機端
                 if (snippetFileLastWriteTime > snippetGistLastUploadTime) {
-                    log.LogEntry((UInt32)__ACTIVITYLOG_ENTRYTYPE.ALE_INFORMATION, ExtensionName, "同步開始");
+                    LogInfomation("同步開始");
                     //更新SnippetSyncerGist                    
                     //尋找符合的Gist File
                     if () {
@@ -149,20 +155,22 @@ namespace SnippetGistSync {
                         //刪除不符合的Gist File
                     }
                 
-                    log.LogEntry((UInt32)__ACTIVITYLOG_ENTRYTYPE.ALE_INFORMATION, ExtensionName, "同步完成");
+                    LogInfomation("同步完成");
 
                     return;
                 }
+                #endregion
 
-                ////下載遠端
+                #region 下載遠端
                 //if (snippetFileLastWriteTime < snippetGistLastUploadTime) {
-                //    log.LogEntry((UInt32)__ACTIVITYLOG_ENTRYTYPE.ALE_INFORMATION, ExtensionName, "同步開始");
+                //    LogInfomation("同步開始");
                 //    //更新機地端所有Snippet
                 //    //刪除不符合的Snippet File
                 //
-                //    log.LogEntry((UInt32)__ACTIVITYLOG_ENTRYTYPE.ALE_INFORMATION, ExtensionName, "同步完成");
+                //    LogInfomation("同步完成");
                 //    return;
                 //}
+                #endregion
 
                 //var gg = github.Gist.Get(SnippetGistSyncGist.Id).GetAwaiter().GetResult();
                 //var time = gg.Files.Where(f => f.Key == "SnippetGistSync").Select(f => f.Value).Single();
@@ -206,7 +214,7 @@ namespace SnippetGistSync {
                 //github.Gist.Edit(SnippetGistSyncGist.Id, updateGist);                
             }
             catch (Exception ex) {
-                log.LogEntry((UInt32)__ACTIVITYLOG_ENTRYTYPE.ALE_ERROR, ExtensionName, ex.ToString());
+                LogError(ex.ToString());
             }
         }
 
@@ -328,6 +336,24 @@ namespace SnippetGistSync {
             
                 return lastUploadTime;
             }
+        }
+
+        public static void LogInfomation(string message) {
+            ThreadHelper.ThrowIfNotOnUIThread();
+
+            log.LogEntry((UInt32)__ACTIVITYLOG_ENTRYTYPE.ALE_INFORMATION, ExtensionName, message);
+        }
+
+        public static void LogWarning(string message) {
+            ThreadHelper.ThrowIfNotOnUIThread();
+
+            log.LogEntry((UInt32)__ACTIVITYLOG_ENTRYTYPE.ALE_WARNING, ExtensionName, message);
+        }
+
+        public static void LogError(string message) {
+            ThreadHelper.ThrowIfNotOnUIThread();
+
+            log.LogEntry((UInt32)__ACTIVITYLOG_ENTRYTYPE.ALE_ERROR, ExtensionName, message);
         }
     }
 
