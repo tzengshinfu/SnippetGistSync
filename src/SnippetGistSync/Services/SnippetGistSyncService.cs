@@ -105,8 +105,6 @@ namespace SnippetGistSync {
             ThreadHelper.ThrowIfNotOnUIThread();
 
             try {
-                log.LogEntry((UInt32)__ACTIVITYLOG_ENTRYTYPE.ALE_INFORMATION, ExtensionName, "同");
-
                 var snippetFileInfoList = SnippetGistSyncService.GetSnippetFileInfoList();
                 var snippetFileLastWriteTime = SnippetGistSyncService.GetSnippetFileLastWriteTime(snippetFileInfoList);
                 var snippetSyncerGist = SnippetGistSyncService.GetSnippetSyncerGist();
@@ -114,6 +112,8 @@ namespace SnippetGistSync {
 
                 //新增SnippetSyncerGist
                 if (snippetSyncerGist == null) {
+                    log.LogEntry((UInt32)__ACTIVITYLOG_ENTRYTYPE.ALE_INFORMATION, ExtensionName, "同步開始");
+
                     var newGist = new NewGist() { Public = false, Description = $"Visual Studio extension [{SnippetGistSyncService.ExtensionName}] synced snippet files." };
 
                     snippetFileInfoList.ForEach((snippetFileInfo) => {
@@ -125,27 +125,42 @@ namespace SnippetGistSync {
                     newGist.Files.Add(SnippetGistSyncService.ExtensionName, $@"{{""lastUploadTime"":""{{{snippetFileLastWriteTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ")}}}""}}");
                     SnippetGistSyncService.GitHub.Gist.Create(newGist).GetAwaiter().GetResult();
 
+                    log.LogEntry((UInt32)__ACTIVITYLOG_ENTRYTYPE.ALE_INFORMATION, ExtensionName, "同步完成");
+
+                    return;
+                }
+
+                if (snippetFileLastWriteTime > snippetGistLastUploadTime) {
+                    log.LogEntry((UInt32)__ACTIVITYLOG_ENTRYTYPE.ALE_INFORMATION, ExtensionName, "同步開始");
+                    log.LogEntry((UInt32)__ACTIVITYLOG_ENTRYTYPE.ALE_INFORMATION, ExtensionName, "同步完成");
+
                     return;
                 }
 
                 //上傳本機端                
-                //if (snippetFileLastWriteTime > snippetGistLastUploadTime) {                    
-                //    //更新SnippetSyncerGist                    
-                //    //尋找符合的Gist File
-                //    if () {
-                //        //更新內容
-                //    }
-                //    else {
-                //        //刪除不符合的Gist File
-                //    }
-                //
-                //    return;
-                //}
+                if (snippetFileLastWriteTime > snippetGistLastUploadTime) {
+                    log.LogEntry((UInt32)__ACTIVITYLOG_ENTRYTYPE.ALE_INFORMATION, ExtensionName, "同步開始");
+                    //更新SnippetSyncerGist                    
+                    //尋找符合的Gist File
+                    if () {
+                        //更新內容
+                    }
+                    else {
+                        //刪除不符合的Gist File
+                    }
+                
+                    log.LogEntry((UInt32)__ACTIVITYLOG_ENTRYTYPE.ALE_INFORMATION, ExtensionName, "同步完成");
+
+                    return;
+                }
+
                 ////下載遠端
                 //if (snippetFileLastWriteTime < snippetGistLastUploadTime) {
+                //    log.LogEntry((UInt32)__ACTIVITYLOG_ENTRYTYPE.ALE_INFORMATION, ExtensionName, "同步開始");
                 //    //更新機地端所有Snippet
                 //    //刪除不符合的Snippet File
                 //
+                //    log.LogEntry((UInt32)__ACTIVITYLOG_ENTRYTYPE.ALE_INFORMATION, ExtensionName, "同步完成");
                 //    return;
                 //}
 
@@ -188,15 +203,10 @@ namespace SnippetGistSync {
                 //  </CodeSnippet>
                 //</CodeSnippets>
                 //" });
-                //github.Gist.Edit(SnippetGistSyncGist.Id, updateGist);
-
-                log.LogEntry((UInt32)__ACTIVITYLOG_ENTRYTYPE.ALE_INFORMATION, ExtensionName, "Execute");
+                //github.Gist.Edit(SnippetGistSyncGist.Id, updateGist);                
             }
             catch (Exception ex) {
                 log.LogEntry((UInt32)__ACTIVITYLOG_ENTRYTYPE.ALE_ERROR, ExtensionName, ex.ToString());
-            }
-            finally {
-                log.LogEntry((UInt32)__ACTIVITYLOG_ENTRYTYPE.ALE_INFORMATION, ExtensionName, "Execute");
             }
         }
 
