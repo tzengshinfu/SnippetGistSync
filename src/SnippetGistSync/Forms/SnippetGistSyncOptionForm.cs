@@ -2,6 +2,7 @@
 using ReactiveUI;
 using System.Drawing;
 using System.Reactive;
+using System.Reactive.Linq;
 using System.Windows.Forms;
 
 namespace SnippetGistSync {
@@ -13,9 +14,6 @@ namespace SnippetGistSync {
             this.WhenActivated(a => {
                 a(this.Bind(ViewModel, vm => vm.UserName, v => v.txtUserName.Text));
                 a(this.Bind(ViewModel, vm => vm.UserPAT, v => v.txtUserPAT.Text));
-                a(this.Bind(ViewModel, vm => vm.IsAutoSyncButtonEnabled, v => v.btnToggleAutoSync.Enabled));
-                a(this.Bind(ViewModel, vm => vm.AutoSyncButtonText, v => v.btnToggleAutoSync.Text));
-                a(this.Bind(ViewModel, vm => vm.AutoSyncButtonTextColor, v => v.btnToggleAutoSync.ForeColor));
                 a(this.BindCommand(ViewModel, vm => vm.Save, v => v.btnSave));
                 a(this.BindCommand(ViewModel, vm => vm.ToGitHub, v => v.btnToGitHub));
                 a(this.BindCommand(ViewModel, vm => vm.ToggleAutoSync, v => v.btnToggleAutoSync));
@@ -23,7 +21,13 @@ namespace SnippetGistSync {
                 a(this.BindCommand(ViewModel, vm => vm.UploadAll, v => v.btnUploadAll));
             });
 
-            ViewModel = new SnippetGistSyncOptionWindowViewModel();
+            ViewModel = new SnippetGistSyncOptionWindowViewModel();                
+            ViewModel.WhenAnyValue(vm => vm.UserName, vm => vm.UserPAT).Select(vm => !string.IsNullOrWhiteSpace(vm.Item1) && !string.IsNullOrWhiteSpace(vm.Item2) ? true : false).BindTo(this, vm => vm.btnSave.Enabled);
+            ViewModel.WhenAnyValue(vm => vm.UserName, vm => vm.UserPAT).Select(vm => !string.IsNullOrWhiteSpace(vm.Item1) && !string.IsNullOrWhiteSpace(vm.Item2) ? true : false).BindTo(this, vm => vm.btnToggleAutoSync.Enabled);
+            ViewModel.WhenAnyValue(vm => vm.UserName, vm => vm.UserPAT).Select(vm => !string.IsNullOrWhiteSpace(vm.Item1) && !string.IsNullOrWhiteSpace(vm.Item2) ? true : false).BindTo(this, vm => vm.btnDownloadAll.Enabled);
+            ViewModel.WhenAnyValue(vm => vm.UserName, vm => vm.UserPAT).Select(vm => !string.IsNullOrWhiteSpace(vm.Item1) && !string.IsNullOrWhiteSpace(vm.Item2) ? true : false).BindTo(this, vm => vm.btnUploadAll.Enabled);
+            ViewModel.WhenAnyValue(vm => vm.IsAutoSyncActionEnabled).Select(vm => vm ? "已啟用同步" : "已停用同步").BindTo(this, vm => vm.btnToggleAutoSync.Text);
+            ViewModel.WhenAnyValue(vm => vm.IsAutoSyncActionEnabled).Select(vm => vm ? Color.DarkGreen : Color.DarkRed).BindTo(this, vm => vm.btnToggleAutoSync.ForeColor);
         }        
     }
 
@@ -44,13 +48,20 @@ namespace SnippetGistSync {
             Save = ReactiveCommand.Create(() => {
                 SnippetGistSyncService.UserName = UserName;
                 SnippetGistSyncService.UserPAT = UserPAT;
+                MessageBox.Show("儲存完成");
             });
             ToGitHub = ReactiveCommand.Create(() => {
                 var snippetGistSyncToGitHubForm = new SnippetGistSyncToGitHubForm();
                 snippetGistSyncToGitHubForm.ShowDialog();
             });
             ToggleAutoSync = ReactiveCommand.Create(() => {
-                IsAutoSyncActionEnabled = !IsAutoSyncActionEnabled;
+                IsAutoSyncActionEnabled = !IsAutoSyncActionEnabled;                
+
+                if (IsAutoSyncActionEnabled) {
+                    SnippetGistSyncService.ResetCumulativeErrorCounts();
+                }
+
+                SnippetGistSyncService.IsAutoSyncActionEnabled = IsAutoSyncActionEnabled;
             });
             DownloadAll = ReactiveCommand.Create(() => {
 
@@ -71,15 +82,6 @@ namespace SnippetGistSync {
         public bool IsAutoSyncActionEnabled {
             get => isAutoSyncActionEnabled;
             set => this.RaiseAndSetIfChanged(ref isAutoSyncActionEnabled, value);
-        }
-        public bool IsAutoSyncButtonEnabled {
-            get => (!string.IsNullOrWhiteSpace(UserName) && !string.IsNullOrWhiteSpace(UserPAT));
-        }
-        public string AutoSyncButtonText {
-            get => IsAutoSyncActionEnabled? "已啟用同步" : "已停用同步";
-        }
-        public Color AutoSyncButtonTextColor { 
-            get => IsAutoSyncActionEnabled? Color.DarkGreen : Color.DarkRed;
         }
     }
 }

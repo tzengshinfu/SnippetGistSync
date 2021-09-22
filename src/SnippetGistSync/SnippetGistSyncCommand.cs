@@ -81,9 +81,9 @@ namespace SnippetGistSync {
         /// <param name="e">Event args.</param>
         private void Execute(object sender, EventArgs e) {
             ThreadHelper.ThrowIfNotOnUIThread();
-
+            
             var snippetGistSyncOptionForm = new SnippetGistSyncOptionForm();
-            snippetGistSyncOptionForm.ShowDialog();
+            snippetGistSyncOptionForm.ShowDialog();            
         }
     }
 }
