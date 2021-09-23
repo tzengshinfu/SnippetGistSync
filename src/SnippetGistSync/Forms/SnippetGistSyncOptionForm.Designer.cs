@@ -32,8 +32,7 @@ namespace SnippetGistSync {
             this.txtUserPAT = new System.Windows.Forms.TextBox();
             this.txtUserName = new System.Windows.Forms.TextBox();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
-            this.btnUploadAll = new System.Windows.Forms.Button();
-            this.btnDownloadAll = new System.Windows.Forms.Button();
+            this.btnResetPathCache = new System.Windows.Forms.Button();
             this.btnToggleAutoSync = new System.Windows.Forms.Button();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
@@ -107,8 +106,7 @@ namespace SnippetGistSync {
             // 
             // groupBox2
             // 
-            this.groupBox2.Controls.Add(this.btnUploadAll);
-            this.groupBox2.Controls.Add(this.btnDownloadAll);
+            this.groupBox2.Controls.Add(this.btnResetPathCache);
             this.groupBox2.Controls.Add(this.btnToggleAutoSync);
             this.groupBox2.Location = new System.Drawing.Point(12, 133);
             this.groupBox2.Name = "groupBox2";
@@ -117,23 +115,14 @@ namespace SnippetGistSync {
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "同步動作";
             // 
-            // btnUploadAll
+            // btnResetPathCache
             // 
-            this.btnUploadAll.Location = new System.Drawing.Point(38, 21);
-            this.btnUploadAll.Name = "btnUploadAll";
-            this.btnUploadAll.Size = new System.Drawing.Size(98, 23);
-            this.btnUploadAll.TabIndex = 7;
-            this.btnUploadAll.Text = "覆蓋遠端";
-            this.btnUploadAll.UseVisualStyleBackColor = true;
-            // 
-            // btnDownloadAll
-            // 
-            this.btnDownloadAll.Location = new System.Drawing.Point(159, 21);
-            this.btnDownloadAll.Name = "btnDownloadAll";
-            this.btnDownloadAll.Size = new System.Drawing.Size(98, 23);
-            this.btnDownloadAll.TabIndex = 6;
-            this.btnDownloadAll.Text = "覆蓋本機";
-            this.btnDownloadAll.UseVisualStyleBackColor = true;
+            this.btnResetPathCache.Location = new System.Drawing.Point(38, 21);
+            this.btnResetPathCache.Name = "btnResetPathCache";
+            this.btnResetPathCache.Size = new System.Drawing.Size(98, 23);
+            this.btnResetPathCache.TabIndex = 7;
+            this.btnResetPathCache.Text = "重設路徑快取";
+            this.btnResetPathCache.UseVisualStyleBackColor = true;
             // 
             // btnToggleAutoSync
             // 
@@ -177,8 +166,7 @@ namespace SnippetGistSync {
         private System.Windows.Forms.TextBox txtUserPAT;
         private System.Windows.Forms.TextBox txtUserName;
         private System.Windows.Forms.GroupBox groupBox2;
-        private System.Windows.Forms.Button btnUploadAll;
-        private System.Windows.Forms.Button btnDownloadAll;
+        private System.Windows.Forms.Button btnResetPathCache;
         private System.Windows.Forms.Button btnToggleAutoSync;
     }
 }

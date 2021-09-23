@@ -17,15 +17,13 @@ namespace SnippetGistSync {
                 a(this.BindCommand(ViewModel, vm => vm.Save, v => v.btnSave));
                 a(this.BindCommand(ViewModel, vm => vm.ToGitHub, v => v.btnToGitHub));
                 a(this.BindCommand(ViewModel, vm => vm.ToggleAutoSync, v => v.btnToggleAutoSync));
-                a(this.BindCommand(ViewModel, vm => vm.DownloadAll, v => v.btnDownloadAll));
-                a(this.BindCommand(ViewModel, vm => vm.UploadAll, v => v.btnUploadAll));
+                a(this.BindCommand(ViewModel, vm => vm.ResetPathCache, v => v.btnResetPathCache));
             });
 
             ViewModel = new SnippetGistSyncOptionWindowViewModel();                
             ViewModel.WhenAnyValue(vm => vm.UserName, vm => vm.UserPAT).Select(vm => !string.IsNullOrWhiteSpace(vm.Item1) && !string.IsNullOrWhiteSpace(vm.Item2) ? true : false).BindTo(this, vm => vm.btnSave.Enabled);
             ViewModel.WhenAnyValue(vm => vm.UserName, vm => vm.UserPAT).Select(vm => !string.IsNullOrWhiteSpace(vm.Item1) && !string.IsNullOrWhiteSpace(vm.Item2) ? true : false).BindTo(this, vm => vm.btnToggleAutoSync.Enabled);
-            ViewModel.WhenAnyValue(vm => vm.UserName, vm => vm.UserPAT).Select(vm => !string.IsNullOrWhiteSpace(vm.Item1) && !string.IsNullOrWhiteSpace(vm.Item2) ? true : false).BindTo(this, vm => vm.btnDownloadAll.Enabled);
-            ViewModel.WhenAnyValue(vm => vm.UserName, vm => vm.UserPAT).Select(vm => !string.IsNullOrWhiteSpace(vm.Item1) && !string.IsNullOrWhiteSpace(vm.Item2) ? true : false).BindTo(this, vm => vm.btnUploadAll.Enabled);
+            ViewModel.WhenAnyValue(vm => vm.UserName, vm => vm.UserPAT).Select(vm => !string.IsNullOrWhiteSpace(vm.Item1) && !string.IsNullOrWhiteSpace(vm.Item2) ? true : false).BindTo(this, vm => vm.btnResetPathCache.Enabled);
             ViewModel.WhenAnyValue(vm => vm.IsAutoSyncActionEnabled).Select(vm => vm ? "已啟用同步" : "已停用同步").BindTo(this, vm => vm.btnToggleAutoSync.Text);
             ViewModel.WhenAnyValue(vm => vm.IsAutoSyncActionEnabled).Select(vm => vm ? Color.DarkGreen : Color.DarkRed).BindTo(this, vm => vm.btnToggleAutoSync.ForeColor);
         }        
@@ -38,8 +36,7 @@ namespace SnippetGistSync {
         public ReactiveCommand<Unit, Unit> Save;
         public ReactiveCommand<Unit, Unit> ToGitHub;
         public ReactiveCommand<Unit, Unit> ToggleAutoSync;
-        public ReactiveCommand<Unit, Unit> DownloadAll;
-        public ReactiveCommand<Unit, Unit> UploadAll;
+        public ReactiveCommand<Unit, Unit> ResetPathCache;
 
         public SnippetGistSyncOptionWindowViewModel() {
             UserName = SnippetGistSyncService.UserName;
@@ -63,11 +60,8 @@ namespace SnippetGistSync {
 
                 SnippetGistSyncService.IsAutoSyncActionEnabled = IsAutoSyncActionEnabled;
             });
-            DownloadAll = ReactiveCommand.Create(() => {
-
-            });
-            UploadAll = ReactiveCommand.Create(() => {
-
+            ResetPathCache = ReactiveCommand.Create(() => {
+                SnippetGistSyncService.ResetSnippetCodeLanguageDirectoryPaths();
             });
         }
 
