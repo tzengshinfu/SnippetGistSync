@@ -251,8 +251,13 @@ namespace SnippetGistSync {
                             var gistNameByLocal = localFile.CodeLanguage + "|" + localFile.FileName + "|" + localFile.LastWriteTimeUtc.ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ");
                             var matchedGistFile = snippetGist.Files.ToList().Where(gistFile => gistFile.Key.Split('|')[0] == localFile.CodeLanguage && gistFile.Key.Split('|')[1] == localFile.FileName).FirstOrDefault();
 
+                            //本機端存在，但遠端不存在，則新增
+                            if (matchedGistFile.Key == null) {
+                                updateSnippetGist.Files.Add(gistNameByLocal, new GistFileUpdate() { NewFileName = gistNameByLocal, Content = localFile.FileCotent });
+                                
+                            }
                             //本機端存在，且遠端亦存在
-                            if (matchedGistFile.Key != null) {
+                            else {
                                 var gistFileLastUploadTimeUtc = DateTime.Parse(matchedGistFile.Key.Split('|')[2]).ToUniversalTime();
 
                                 //若本機端較新，則更新遠端
@@ -264,10 +269,6 @@ namespace SnippetGistSync {
                                     File.WriteAllText(localFile.FilePath, matchedGistFile.Value.Content);
                                     File.SetLastWriteTimeUtc(localFile.FilePath, gistFileLastUploadTimeUtc);
                                 }
-                            }
-                            //本機端存在，但遠端不存在，則新增
-                            else {
-                                updateSnippetGist.Files.Add(gistNameByLocal, new GistFileUpdate() { NewFileName = gistNameByLocal, Content = localFile.FileCotent });
                             }
                         }
 
