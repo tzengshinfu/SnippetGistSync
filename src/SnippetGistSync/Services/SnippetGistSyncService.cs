@@ -71,18 +71,18 @@ namespace SnippetGistSync {
         public static List<SnippetGuid> SnippetGuids {
             get {
                 return new List<SnippetGuid>() {
-                    new SnippetGuid() { CodeLanguage = "csharp", Name = "Visual C#", Guid = new Guid("694DD9B6-B865-4C5B-AD85-86356E9C88DC") },
-                    new SnippetGuid() { CodeLanguage = "vb", Name = "Visual Basic", Guid = new Guid("3A12D0B8-C26C-11D0-B442-00A0244A1DD2") },
-                    new SnippetGuid() { CodeLanguage = "fsharp", Name = "Visual F#", Guid = new Guid("bc6dd5a5-d4d6-4dab-a00d-a51242dbaf1b") },
-                    new SnippetGuid() { CodeLanguage = "cpp", Name = "Visual C++", Guid = new Guid("B2F072B0-ABC1-11D0-9D62-00C04FD9DFD9") },
-                    new SnippetGuid() { CodeLanguage = "xaml", Name = "XAML", Guid = new Guid("CD53C9A1-6BC2-412B-BE36-CC715ED8DD41") },
-                    new SnippetGuid() { CodeLanguage = "xml", Name = "XML", Guid = new Guid("F6819A78-A205-47B5-BE1C-675B3C7F0B8E") },
-                    new SnippetGuid() { CodeLanguage = "typescript", Name = "TypeScript", Guid = new Guid("4a0dddb5-7a95-4fbf-97cc-616d07737a77") },
-                    new SnippetGuid() { CodeLanguage = "python", Name = "Python", Guid = new Guid("bf96a6ce-574f-3259-98be-503a3ad636dd") },
-                    new SnippetGuid() { CodeLanguage = "sql", Name = "SQL_SSDT", Guid = new Guid("ed1a9c1c-d95c-4dc1-8db8-e5a28707a864") },
-                    new SnippetGuid() { CodeLanguage = "html", Name = "HTML", Guid = new Guid("58E975A0-F8FE-11D2-A6AE-00104BCC7269") },
-                    new SnippetGuid() { CodeLanguage = "css", Name = "CSS", Guid = new Guid("A764E898-518D-11d2-9A89-00C04F79EFC3") },
-                    new SnippetGuid() { CodeLanguage = "javascript", Name = "JavaScript", Guid = new Guid("71d61d27-9011-4b17-9469-d20f798fb5c0") },
+                    new SnippetGuid() { CodeLanguage = "csharp", DirectoryName = "Visual C#", Guid = new Guid("694DD9B6-B865-4C5B-AD85-86356E9C88DC") },
+                    new SnippetGuid() { CodeLanguage = "vb", DirectoryName = "Visual Basic", Guid = new Guid("3A12D0B8-C26C-11D0-B442-00A0244A1DD2") },
+                    new SnippetGuid() { CodeLanguage = "fsharp", DirectoryName = "Visual F#", Guid = new Guid("bc6dd5a5-d4d6-4dab-a00d-a51242dbaf1b") },
+                    new SnippetGuid() { CodeLanguage = "cpp", DirectoryName = "Visual C++", Guid = new Guid("B2F072B0-ABC1-11D0-9D62-00C04FD9DFD9") },
+                    new SnippetGuid() { CodeLanguage = "xaml", DirectoryName = "XAML", Guid = new Guid("CD53C9A1-6BC2-412B-BE36-CC715ED8DD41") },
+                    new SnippetGuid() { CodeLanguage = "xml", DirectoryName = "XML", Guid = new Guid("F6819A78-A205-47B5-BE1C-675B3C7F0B8E") },
+                    new SnippetGuid() { CodeLanguage = "typescript", DirectoryName = "TypeScript", Guid = new Guid("4a0dddb5-7a95-4fbf-97cc-616d07737a77") },
+                    new SnippetGuid() { CodeLanguage = "python", DirectoryName = "Python", Guid = new Guid("bf96a6ce-574f-3259-98be-503a3ad636dd") },
+                    new SnippetGuid() { CodeLanguage = "sql", DirectoryName = "SQL_SSDT", Guid = new Guid("ed1a9c1c-d95c-4dc1-8db8-e5a28707a864") },
+                    new SnippetGuid() { CodeLanguage = "html", DirectoryName = "HTML", Guid = new Guid("58E975A0-F8FE-11D2-A6AE-00104BCC7269") },
+                    new SnippetGuid() { CodeLanguage = "css", DirectoryName = "CSS", Guid = new Guid("A764E898-518D-11d2-9A89-00C04F79EFC3") },
+                    new SnippetGuid() { CodeLanguage = "javascript", DirectoryName = "JavaScript", Guid = new Guid("71d61d27-9011-4b17-9469-d20f798fb5c0") },
                 };
             }
         }
@@ -120,10 +120,14 @@ namespace SnippetGistSync {
             _ = Task.Run(() => { _ = StartAutoSyncAsync(); });
         }
 
-        private static void onSnippetFileDeleted(object sender, FileSystemEventArgs e) {
+        private static async Task onSnippetFileDeletedAsync(object sender, FileSystemEventArgs e) {
             LogInfomation("同步開始");
             //將遠端內容改為"[已刪除]"字樣
-            //var f = GetSnippetFiles();
+            var snippetGist = await GetSnippetGistAsync();
+            var updateSnippetGist = new GistUpdate();
+            
+            var codeLanguage = SnippetGuids.Where(s => e.FullPath.Contains(s.DirectoryName)).First().CodeLanguage;
+            var fileName = Path.GetFileName(e.FullPath);
             //e.FullPath.CON
             Console.WriteLine("檔案變更: " + e.FullPath + " " + e.ChangeType);
             //if (![已刪除])
@@ -131,6 +135,10 @@ namespace SnippetGistSync {
             //if (updateSnippetGist.Files.Count > 0) {
             //    await GitHub.Gist.Edit(snippetGist.Id, updateSnippetGist);
             //}
+
+            if (updateSnippetGist.Files.Count > 0) {
+                await GitHub.Gist.Edit(snippetGist.Id, updateSnippetGist);
+            }
 
             LogInfomation("同步完成");
         }
@@ -468,7 +476,7 @@ namespace SnippetGistSync {
 
     public class SnippetGuid {
         public string CodeLanguage { get; set; }
-        public string Name { get; set; }
+        public string DirectoryName { get; set; }
         public Guid Guid { get; set; }
     }
 }
