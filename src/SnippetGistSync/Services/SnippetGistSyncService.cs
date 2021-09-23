@@ -254,7 +254,6 @@ namespace SnippetGistSync {
                             //本機端存在，但遠端不存在，則新增
                             if (matchedGistFile.Key == null) {
                                 updateSnippetGist.Files.Add(gistNameByLocal, new GistFileUpdate() { NewFileName = gistNameByLocal, Content = localFile.FileCotent });
-                                
                             }
                             //本機端存在，且遠端亦存在
                             else {
