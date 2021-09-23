@@ -76,9 +76,9 @@ namespace SnippetGistSync {
             this.label2.AutoSize = true;
             this.label2.Location = new System.Drawing.Point(10, 60);
             this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(111, 12);
+            this.label2.Size = new System.Drawing.Size(104, 12);
             this.label2.TabIndex = 3;
-            this.label2.Text = "Personal Access Token";
+            this.label2.Text = "Personal access token";
             // 
             // label1
             // 

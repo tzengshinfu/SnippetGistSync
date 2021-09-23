@@ -1,5 +1,4 @@
-﻿using Octokit;
-using ReactiveUI;
+﻿using ReactiveUI;
 using System.Drawing;
 using System.Reactive;
 using System.Reactive.Linq;
@@ -61,7 +60,7 @@ namespace SnippetGistSync {
                 SnippetGistSyncService.IsAutoSyncActionEnabled = IsAutoSyncActionEnabled;
             });
             ResetPathCache = ReactiveCommand.Create(() => {
-                SnippetGistSyncService.ResetSnippetCodeLanguageDirectoryPaths();
+                SnippetGistSyncService.ResetSnippetDirectoryPaths();
             });
         }
 
