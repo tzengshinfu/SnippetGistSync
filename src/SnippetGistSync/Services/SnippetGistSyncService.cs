@@ -322,7 +322,7 @@ namespace SnippetGistSync {
                                     continue;
                                 }
 
-                                LogInfomation($"下載片段[{matchedLocalFile.CodeLanguage + "|" + matchedLocalFile.FileName}]->本機");
+                                LogInfomation($"下載片段[{gistFile.GetCodeLanguage() + "|" + gistFile.GetFileName()}]->本機");
 
                                 var localDirectoryPath = snippetDirectoryPaths.First(snippetDirectoryPath => snippetDirectoryPath.CodeLanguage == gistFile.GetCodeLanguage()).DirectoryPath;
                                 var localFilePath = localDirectoryPath + "\\" + gistFile.GetFileName();
