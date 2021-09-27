@@ -245,10 +245,11 @@ namespace SnippetGistSync {
                             var newGistFileName = localFile.CodeLanguage + "|" + localFile.FileName + "|" + localFile.LastWriteTimeUtc.ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ");
 
                             newSnippetGist.Files.Add(newGistFileName, localFile.FileCotent);
-                        }
-                        newSnippetGist.Files.Add(ThisExtensionName, $@"{{""lastUploadTimeUtc"":""{snippetFilesLastWriteTimeUtc.ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ")}""}}");
+                        }                        
 
                         if (newSnippetGist.Files.Count > 0) {
+                            newSnippetGist.Files.Add(ThisExtensionName, $@"{{""lastUploadTimeUtc"":""{snippetFilesLastWriteTimeUtc.ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ")}""}}");
+
                             await GitHub.Gist.Create(newSnippetGist);
                         }
 
@@ -348,6 +349,8 @@ namespace SnippetGistSync {
                         }
 
                         if (updateSnippetGist.Files.Count > 0) {
+                            updateSnippetGist.Files.Add(ThisExtensionName, new GistFileUpdate() { NewFileName = ThisExtensionName, Content = $@"{{""lastUploadTimeUtc"":""{snippetFilesLastWriteTimeUtc.ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ")}""}}" });
+
                             await GitHub.Gist.Edit(snippetGist.Id, updateSnippetGist);
                         }
 
@@ -382,16 +385,19 @@ namespace SnippetGistSync {
             var updateSnippetGist = new GistUpdate();
             var localFileCodeLanguage = SnippetGuids.First(snippetGuid => e.FullPath.Contains(snippetGuid.DirectoryName)).CodeLanguage;
             var localFileName = Path.GetFileName(e.FullPath);
+            var localFileDeletedTimeUtc = DateTime.Now.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ");
             var matchedGistFile = snippetGist.Files.ToList().FirstOrDefault(gistFile => gistFile.GetCodeLanguage() == localFileCodeLanguage && gistFile.GetFileName() == localFileName);
 
             if (matchedGistFile.Key != null) {
                 LogInfomation($"刪除片段[{localFileCodeLanguage + "|" + localFileName}]->GitHub Gist [{ThisExtensionName}]");
 
                 //將遠端內容改為"[已刪除]"字樣
-                updateSnippetGist.Files.Add(matchedGistFile.Key, new GistFileUpdate() { NewFileName = localFileCodeLanguage + "|" + localFileName + "|" + DateTime.Now.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ"), Content = deletedContextText });
+                updateSnippetGist.Files.Add(matchedGistFile.Key, new GistFileUpdate() { NewFileName = localFileCodeLanguage + "|" + localFileName + "|" + localFileDeletedTimeUtc, Content = deletedContextText });
             }
 
             if (updateSnippetGist.Files.Count > 0) {
+                updateSnippetGist.Files.Add(ThisExtensionName, new GistFileUpdate() { NewFileName = ThisExtensionName, Content = $@"{{""lastUploadTimeUtc"":""{localFileDeletedTimeUtc}""}}" });
+
                 await GitHub.Gist.Edit(snippetGist.Id, updateSnippetGist);
             }
 
