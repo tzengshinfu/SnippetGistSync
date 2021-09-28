@@ -1,10 +1,10 @@
 ﻿using Microsoft;
+using Microsoft.VisualBasic.FileIO;
 using Microsoft.VisualStudio.Settings;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.Shell.Settings;
 using Microsoft.VisualStudio.TextManager.Interop;
-using Microsoft.VisualStudio.Threading;
 using Newtonsoft.Json;
 using Octokit;
 using System;
@@ -344,7 +344,7 @@ namespace SnippetGistSync {
 
                                 LogInfomation($"刪除片段[{matchedLocalFile.CodeLanguage + "|" + matchedLocalFile.FileName}]->本機");
 
-                                File.Delete(matchedLocalFile.FilePath);
+                                FileSystem.DeleteFile(matchedLocalFile.FilePath, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
                             }
                         }
 
@@ -388,11 +388,13 @@ namespace SnippetGistSync {
             var localFileDeletedTimeUtc = DateTime.Now.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ");
             var matchedGistFile = snippetGist.Files.ToList().FirstOrDefault(gistFile => gistFile.GetCodeLanguage() == localFileCodeLanguage && gistFile.GetFileName() == localFileName);
 
+            //將遠端內容改為"[已刪除]"字樣(只設定1次)
             if (matchedGistFile.Key != null) {
-                LogInfomation($"刪除片段[{localFileCodeLanguage + "|" + localFileName}]->GitHub Gist [{ThisExtensionName}]");
+                if (matchedGistFile.Value.Content != deletedContextText) {
+                    LogInfomation($"刪除片段[{localFileCodeLanguage + "|" + localFileName}]->GitHub Gist [{ThisExtensionName}]");
 
-                //將遠端內容改為"[已刪除]"字樣
-                updateSnippetGist.Files.Add(matchedGistFile.Key, new GistFileUpdate() { NewFileName = localFileCodeLanguage + "|" + localFileName + "|" + localFileDeletedTimeUtc, Content = deletedContextText });
+                    updateSnippetGist.Files.Add(matchedGistFile.Key, new GistFileUpdate() { NewFileName = localFileCodeLanguage + "|" + localFileName + "|" + localFileDeletedTimeUtc, Content = deletedContextText });
+                }
             }
 
             if (updateSnippetGist.Files.Count > 0) {
