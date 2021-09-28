@@ -14,6 +14,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using SearchOption = System.IO.SearchOption;
 using Task = System.Threading.Tasks.Task;
 
 namespace SnippetGistSync {
@@ -30,9 +31,17 @@ namespace SnippetGistSync {
         private static readonly int maxErrorCounts = 5;
         private static int cumulativeErrorCounts = 0;
         /// <summary>
+        /// ".snippet"
+        /// </summary>
+        private static readonly string snippetFileExtenstion = ".snippet";
+        /// <summary>
         /// "[已刪除]"
         /// </summary>
         private static readonly string deletedContextText = "[已刪除]";
+        /// <summary>
+        /// ".deleted"
+        /// </summary>
+        private static readonly string deletedSnippetExtenstion = ".deleted";
 
         public static GitHubClient GitHub {
             get {
@@ -118,7 +127,7 @@ namespace SnippetGistSync {
             snippetDirectoryPaths = GetSnippetDirectoryPaths();
 
             snippetDirectoryPaths.ForEach(snippetDirectoryPath => {
-                var snippetFileWatcher = new FileSystemWatcher(snippetDirectoryPath.DirectoryPath, "*.snippet") {
+                var snippetFileWatcher = new FileSystemWatcher(snippetDirectoryPath.DirectoryPath, $"*{snippetFileExtenstion}") {
                     NotifyFilter = NotifyFilters.FileName,
                     IncludeSubdirectories = false,
                     EnableRaisingEvents = true
@@ -188,7 +197,7 @@ namespace SnippetGistSync {
                             var author = snippetXML.Descendants($"{{{nameSpace}}}Author").FirstOrDefault()?.Value ?? "";
 
                             //只獲取使用者自訂程式碼片段(排除Visual Studio內建片段)
-                            if (author.Contains("Microsoft") || expansionInfo.path.Contains("AddaNewRowToTypedDataTable.snippet")) {
+                            if (author.Contains("Microsoft") || expansionInfo.path.Contains($"AddaNewRowToTypedDataTable{snippetFileExtenstion}")) {
                                 continue;
                             }
 
@@ -332,7 +341,7 @@ namespace SnippetGistSync {
                                 File.WriteAllText(localFilePath, gistFile.Value.Content);
                                 File.SetLastWriteTimeUtc(localFilePath, localFileLastWriteTimeUtc);
                             }
-                            //遠端內容為"[已刪除]"字樣，則刪除本機端
+                            //遠端內容為"[已刪除]"字樣，則刪除本機端(修改副檔名)
                             else {
                                 if (gistFile.Value.Content != deletedContextText) {
                                     continue;
@@ -343,8 +352,9 @@ namespace SnippetGistSync {
                                 }
 
                                 LogInfomation($"刪除片段[{matchedLocalFile.CodeLanguage + "|" + matchedLocalFile.FileName}]->本機");
-
-                                FileSystem.DeleteFile(matchedLocalFile.FilePath, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
+                                
+                                File.Move(matchedLocalFile.FilePath, Path.GetFileNameWithoutExtension(matchedLocalFile.FilePath) + deletedSnippetExtenstion);
+                                File.SetLastWriteTimeUtc(matchedLocalFile.FilePath, gistFile.GetLastUploadTimeUtc());
                             }
                         }
 
@@ -413,7 +423,9 @@ namespace SnippetGistSync {
                 var snippetDirectoryByCodeLanguagePaths = snippetDirectoryPaths.Where(snippetDirectoryPath => snippetDirectoryPath.CodeLanguage == snippetGuid.CodeLanguage).ToList();
 
                 foreach (var snippetDirectoryByCodeLanguagePath in snippetDirectoryByCodeLanguagePaths) {
-                    var snippetFilePaths = Directory.EnumerateFiles(snippetDirectoryByCodeLanguagePath.DirectoryPath, "*.snippet");
+                    var snippetFilePaths = Directory.EnumerateFiles(snippetDirectoryByCodeLanguagePath.DirectoryPath, $"*{snippetFileExtenstion}", SearchOption.TopDirectoryOnly);
+                    var deletedFilePaths = Directory.EnumerateFiles(snippetDirectoryByCodeLanguagePath.DirectoryPath, $"*{deletedSnippetExtenstion}", SearchOption.TopDirectoryOnly);
+                    snippetFilePaths = snippetFilePaths.Concat(deletedFilePaths);
 
                     foreach (var snippetFilePath in snippetFilePaths.ToList()) {
                         var snippetFileInfo = new SnippetFile() {
