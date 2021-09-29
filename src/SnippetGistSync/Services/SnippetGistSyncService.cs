@@ -307,13 +307,9 @@ namespace SnippetGistSync {
 
                                     if (matchedGistFile.Value.Content.Contains(deletedContentText)) {
                                         LogInfomation($"刪除片段[{localFile.CodeLanguage + "|" + localFile.FileName}]->本機");
-
-                                        File.SetAttributes(localFile.FilePath, FileAttributes.Hidden);
                                     }
                                     else {
                                         LogInfomation($"更新片段[{localFile.CodeLanguage + "|" + localFile.FileName}]->本機");
-
-                                        File.SetAttributes(localFile.FilePath, FileAttributes.Normal);
                                     }
 
                                     File.SetLastWriteTimeUtc(localFile.FilePath, matchedGistFile.GetLastUploadTimeUtc());
@@ -341,13 +337,9 @@ namespace SnippetGistSync {
 
                             if (gistFile.Value.Content.Contains(deletedContentText)) {
                                 LogInfomation($"刪除片段[{gistFile.GetCodeLanguage() + "|" + gistFile.GetFileName()}]->本機");
-
-                                File.SetAttributes(localFilePath, FileAttributes.Hidden);
                             }
                             else {
                                 LogInfomation($"下載片段[{gistFile.GetCodeLanguage() + "|" + gistFile.GetFileName()}]->本機");
-
-                                File.SetAttributes(localFilePath, FileAttributes.Normal);
                             }
 
                             File.SetLastWriteTimeUtc(localFilePath, gistFile.GetLastUploadTimeUtc());
