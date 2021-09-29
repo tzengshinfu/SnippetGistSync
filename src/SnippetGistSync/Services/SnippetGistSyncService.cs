@@ -1,5 +1,4 @@
 ﻿using Microsoft;
-using Microsoft.VisualBasic.FileIO;
 using Microsoft.VisualStudio.Settings;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
@@ -35,13 +34,9 @@ namespace SnippetGistSync {
         /// </summary>
         private static readonly string snippetFileExtenstion = ".snippet";
         /// <summary>
-        /// "[已刪除]"
+        /// "[deleted]"
         /// </summary>
-        private static readonly string deletedContextText = "[已刪除]";
-        /// <summary>
-        /// ".deleted"
-        /// </summary>
-        private static readonly string deletedSnippetExtenstion = ".deleted";
+        private static readonly string deletedContentText = "[deleted]";
 
         public static GitHubClient GitHub {
             get {
@@ -254,7 +249,7 @@ namespace SnippetGistSync {
                             var newGistFileName = localFile.CodeLanguage + "|" + localFile.FileName + "|" + localFile.LastWriteTimeUtc.ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ");
 
                             newSnippetGist.Files.Add(newGistFileName, localFile.FileCotent);
-                        }                        
+                        }
 
                         if (newSnippetGist.Files.Count > 0) {
                             newSnippetGist.Files.Add(ThisExtensionName, $@"{{""lastUploadTimeUtc"":""{snippetFilesLastWriteTimeUtc.ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ")}""}}");
@@ -300,20 +295,28 @@ namespace SnippetGistSync {
                             }
                             //本機端存在，且遠端亦存在
                             else {
-                                var gistFileLastUploadTimeUtc = matchedGistFile.GetLastUploadTimeUtc();
-
                                 //若本機端較新，則更新遠端
-                                if (localFile.LastWriteTimeUtc > gistFileLastUploadTimeUtc) {
+                                if (localFile.LastWriteTimeUtc > matchedGistFile.GetLastUploadTimeUtc()) {
                                     LogInfomation($"更新片段[{localFile.CodeLanguage + "|" + localFile.FileName}]->GitHub Gist [{ThisExtensionName}]");
 
                                     updateSnippetGist.Files.Add(matchedGistFile.Key, new GistFileUpdate() { NewFileName = gistNameByLocal, Content = localFile.FileCotent });
                                 }
-                                //若遠端較新，則更新本機端                                
-                                else if (localFile.LastWriteTimeUtc < gistFileLastUploadTimeUtc) {
-                                    LogInfomation($"更新片段[{localFile.CodeLanguage + "|" + localFile.FileName}]->本機");
-
+                                //若遠端較新，則更新本機端                       
+                                else if (localFile.LastWriteTimeUtc < matchedGistFile.GetLastUploadTimeUtc()) {
                                     File.WriteAllText(localFile.FilePath, matchedGistFile.Value.Content);
-                                    File.SetLastWriteTimeUtc(localFile.FilePath, gistFileLastUploadTimeUtc);
+
+                                    if (matchedGistFile.Value.Content.Contains(deletedContentText)) {
+                                        LogInfomation($"刪除片段[{localFile.CodeLanguage + "|" + localFile.FileName}]->本機");
+
+                                        File.SetAttributes(localFile.FilePath, FileAttributes.Hidden);
+                                    }
+                                    else {
+                                        LogInfomation($"更新片段[{localFile.CodeLanguage + "|" + localFile.FileName}]->本機");
+
+                                        File.SetAttributes(localFile.FilePath, FileAttributes.Normal);
+                                    }
+
+                                    File.SetLastWriteTimeUtc(localFile.FilePath, matchedGistFile.GetLastUploadTimeUtc());
                                 }
                             }
                         }
@@ -324,38 +327,30 @@ namespace SnippetGistSync {
                                 continue;
                             }
 
+                            //遠端存在，但本機端不存在，則下載
                             var matchedLocalFile = snippetFiles.FirstOrDefault(localFile => localFile.CodeLanguage == gistFile.GetCodeLanguage() && localFile.FileName == gistFile.GetFileName());
 
-                            //本機端不存在，但遠端存在，則下載
-                            if (matchedLocalFile == null) {
-                                if (gistFile.Value.Content == deletedContextText) {
-                                    continue;
-                                }
+                            if (matchedLocalFile != null) {
+                                continue;
+                            }
 
+                            var localDirectoryPath = snippetDirectoryPaths.First(snippetDirectoryPath => snippetDirectoryPath.CodeLanguage == gistFile.GetCodeLanguage()).DirectoryPath;
+                            var localFilePath = localDirectoryPath + "\\" + gistFile.GetFileName();
+
+                            File.WriteAllText(localFilePath, gistFile.Value.Content);
+
+                            if (gistFile.Value.Content.Contains(deletedContentText)) {
+                                LogInfomation($"刪除片段[{gistFile.GetCodeLanguage() + "|" + gistFile.GetFileName()}]->本機");
+
+                                File.SetAttributes(localFilePath, FileAttributes.Hidden);
+                            }
+                            else {
                                 LogInfomation($"下載片段[{gistFile.GetCodeLanguage() + "|" + gistFile.GetFileName()}]->本機");
 
-                                var localDirectoryPath = snippetDirectoryPaths.First(snippetDirectoryPath => snippetDirectoryPath.CodeLanguage == gistFile.GetCodeLanguage()).DirectoryPath;
-                                var localFilePath = localDirectoryPath + "\\" + gistFile.GetFileName();
-                                var localFileLastWriteTimeUtc = gistFile.GetLastUploadTimeUtc();
-
-                                File.WriteAllText(localFilePath, gistFile.Value.Content);
-                                File.SetLastWriteTimeUtc(localFilePath, localFileLastWriteTimeUtc);
+                                File.SetAttributes(localFilePath, FileAttributes.Normal);
                             }
-                            //遠端內容為"[已刪除]"字樣，則刪除本機端(修改副檔名)
-                            else {
-                                if (gistFile.Value.Content != deletedContextText) {
-                                    continue;
-                                }
 
-                                if (matchedLocalFile.LastWriteTimeUtc > gistFile.GetLastUploadTimeUtc()) {
-                                    continue;
-                                }
-
-                                LogInfomation($"刪除片段[{matchedLocalFile.CodeLanguage + "|" + matchedLocalFile.FileName}]->本機");
-                                
-                                File.Move(matchedLocalFile.FilePath, Path.GetFileNameWithoutExtension(matchedLocalFile.FilePath) + deletedSnippetExtenstion);
-                                File.SetLastWriteTimeUtc(matchedLocalFile.FilePath, gistFile.GetLastUploadTimeUtc());
-                            }
+                            File.SetLastWriteTimeUtc(localFilePath, gistFile.GetLastUploadTimeUtc());
                         }
 
                         if (updateSnippetGist.Files.Count > 0) {
@@ -398,13 +393,11 @@ namespace SnippetGistSync {
             var localFileDeletedTimeUtc = DateTime.Now.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ");
             var matchedGistFile = snippetGist.Files.ToList().FirstOrDefault(gistFile => gistFile.GetCodeLanguage() == localFileCodeLanguage && gistFile.GetFileName() == localFileName);
 
-            //將遠端內容改為"[已刪除]"字樣(只設定1次)
+            //將遠端片段內容改為"[deleted]"
             if (matchedGistFile.Key != null) {
-                if (matchedGistFile.Value.Content != deletedContextText) {
-                    LogInfomation($"刪除片段[{localFileCodeLanguage + "|" + localFileName}]->GitHub Gist [{ThisExtensionName}]");
+                LogInfomation($"刪除片段[{localFileCodeLanguage + "|" + localFileName}]->GitHub Gist [{ThisExtensionName}]");
 
-                    updateSnippetGist.Files.Add(matchedGistFile.Key, new GistFileUpdate() { NewFileName = localFileCodeLanguage + "|" + localFileName + "|" + localFileDeletedTimeUtc, Content = deletedContextText });
-                }
+                updateSnippetGist.Files.Add(matchedGistFile.Key, new GistFileUpdate() { NewFileName = localFileCodeLanguage + "|" + localFileName + "|" + localFileDeletedTimeUtc, Content = deletedContentText });
             }
 
             if (updateSnippetGist.Files.Count > 0) {
@@ -424,8 +417,6 @@ namespace SnippetGistSync {
 
                 foreach (var snippetDirectoryByCodeLanguagePath in snippetDirectoryByCodeLanguagePaths) {
                     var snippetFilePaths = Directory.EnumerateFiles(snippetDirectoryByCodeLanguagePath.DirectoryPath, $"*{snippetFileExtenstion}", SearchOption.TopDirectoryOnly);
-                    var deletedFilePaths = Directory.EnumerateFiles(snippetDirectoryByCodeLanguagePath.DirectoryPath, $"*{deletedSnippetExtenstion}", SearchOption.TopDirectoryOnly);
-                    snippetFilePaths = snippetFilePaths.Concat(deletedFilePaths);
 
                     foreach (var snippetFilePath in snippetFilePaths.ToList()) {
                         var snippetFileInfo = new SnippetFile() {
