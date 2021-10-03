@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="SnippetGistSync.1b855579-82ba-494e-9cfa-3a3bc962d6c3" Version="1.0" Language="zh-TW" Publisher="tzengshinfu" />
+        <Identity Id="SnippetGistSync.1b855579-82ba-494e-9cfa-3a3bc962d6c3" Version="0.1" Language="zh-TW" Publisher="tzengshinfu" />
         <DisplayName>SnippetGistSync</DisplayName>
         <Description xml:space="preserve">將本機程式碼片段檔案同步至GitHub Gist。</Description>
         <Preview>true</Preview>
